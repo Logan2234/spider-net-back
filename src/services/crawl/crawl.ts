@@ -1,4 +1,3 @@
-import sequelize from '@/configs/db.config';
 import { SiteState } from '@/enums/siteState';
 import Queue from '@/models/queue.model';
 import { getLinksFromHtml } from '@/utils/htmlHelper';
@@ -34,6 +33,7 @@ const crawlAndScrap = async (): Promise<void> => {
         let numberOfRetries = 0;
         while (continueScraping) {
             sites = await getSiteFromQueueParallel(20);
+            parentPort?.postMessage(sites.map((site) => site.url + '\n'));
 
             if (sites.length === 0) {
                 numberOfRetries++;
@@ -57,23 +57,20 @@ const scrapBatch = async (sites: Queue[]): Promise<void[]> => {
     return Promise.all(
         sites.map(async (site) => {
             try {
-                parentPort?.postMessage(`Crawling ${site.url}`);
                 const newUrls = await getLinksOnPage(site.url);
 
-                await sequelize.transaction(async (transaction) => {
-                    for (let url of newUrls) {
-                        // TODO Batch add
-                        // TODO ne pas ajouter si c'est la même url
-                        if (url.href === site.url) {
-                            continue;
-                        }
-
-                        await addInQueue(url, 0, site.depth + 1, site.url, transaction);
+                for (let url of newUrls) {
+                    // TODO Batch add
+                    // TODO ne pas ajouter si c'est la même url
+                    if (url.href === site.url) {
+                        continue;
                     }
 
-                    await addToVisitedSites(site.url, transaction);
-                    await site.destroy({ transaction });
-                });
+                    await addInQueue(url, 0, site.depth + 1, site.url, null);
+                }
+
+                await addToVisitedSites(site.url, null);
+                await site.destroy();
             } catch (err: any) {
                 const errorMessage =
                     err instanceof ValidationError ? err.errors.map((error) => error.message).join(', ') : err.message;

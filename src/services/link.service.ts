@@ -30,8 +30,6 @@ const addLink = async (from: string | URL, to: string | URL, transaction: Transa
     return;
 };
 
-const countLinks = async (): Promise<number> => {
-    return Link.count();
-};
+const countLinks = async (): Promise<number> => Link.count();
 
 export { addLink, countLinks };

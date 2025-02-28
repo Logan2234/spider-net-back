@@ -51,39 +51,44 @@ const addInQueue = async (
     });
 
     if (!created) {
-        // If the site was already in the queue, update its priority
         await site.update({ priority: site.priority + 1 }, { transaction });
     }
 };
 
-const countSitesInQueue = async (): Promise<number> => {
-    return Queue.count();
-};
+const countSitesInQueue = async (): Promise<number> => Queue.count();
 
+/**
+ * Retrieve a batch of sites from the queue to be crawled in parallel.
+ *
+ * @param n The number of sites to retrieve. Defaults to 50.
+ * @returns An array of `Queue` objects.
+ *
+ * This method retrieves a batch of sites from the queue, marks them as being crawled,
+ * and returns them in an array. The sites are ordered by priority, depth, and creation
+ * time, and are limited to the specified number. If no sites are available, an empty
+ * array is returned.
+ */
 const getSiteFromQueueParallel = async (n: number = 50): Promise<Queue[]> => {
-    return await sequelize.transaction(async (transaction) => {
-        const sites = await Queue.findAll({
-            where: { state: SiteState.UNPROCESSED },
-            order: [
-                ['priority', 'DESC'],
-                ['depth', 'ASC'],
-                ['createdAt', 'ASC']
-            ],
-            limit: n,
-            lock: true,
-            skipLocked: true,
-            transaction
-        });
+    const sites: Queue[] = await sequelize.query(
+        `
+        SELECT * FROM queue
+        WHERE state = :state
+        ORDER BY "priority" DESC, "depth" ASC, "createdAt" ASC
+        LIMIT :limit
+        FOR UPDATE SKIP LOCKED
+        `,
+        {
+            replacements: { state: SiteState.UNPROCESSED, limit: n },
+            model: Queue,
+            mapToModel: true
+        }
+    );
 
-        if (sites.length === 0) return [];
+    if (sites.length === 0) return [];
 
-        await Queue.update(
-            { state: SiteState.CRAWLING },
-            { where: { url: sites.map((site) => site.url) }, transaction }
-        );
+    await Queue.update({ state: SiteState.CRAWLING }, { where: { url: sites.map((site) => site.url) } });
 
-        return sites;
-    });
+    return sites;
 };
 
 export { addInQueue, countSitesInQueue, getSiteFromQueueParallel };

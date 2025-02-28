@@ -16,8 +16,6 @@ const addDomain = async (link: URL | null, transaction: Transaction | null = nul
     });
 };
 
-const countDomains = async (): Promise<number> => {
-    return Domain.count();
-};
+const countDomains = async (): Promise<number> => Domain.count();
 
 export { addDomain, countDomains };
