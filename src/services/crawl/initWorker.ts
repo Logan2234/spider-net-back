@@ -1,8 +1,6 @@
 import os from 'os';
 import { Worker } from 'worker_threads';
 
-const HIDE_STDS = true;
-
 let workers: Worker[] = [];
 
 const initWorkers = async (): Promise<boolean> => {
@@ -48,6 +46,7 @@ const stopWorkers = async (): Promise<void> => {
 };
 
 const initWorker = (): Worker => {
+    const HIDE_STDS = process.env.HIDE_WORKER_STDS?.toLowerCase() === 'true';
     const worker = new Worker(__dirname + '/crawl.js', {
         stderr: HIDE_STDS,
         stdin: HIDE_STDS,

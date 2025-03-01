@@ -1,5 +1,6 @@
 import { getLinksFromHtml2 } from '@/utils/htmlHelper';
 import process from 'process';
+import robotsParser from 'robots-parser';
 import { ValidationError } from 'sequelize';
 import { URL } from 'url';
 import { parentPort } from 'worker_threads';
@@ -9,6 +10,7 @@ import {
     updateSiteAsFailed,
     updateSiteAsVisited
 } from '../queue.service';
+import verifyUrlCanBeCrawled from '@/utils/verifyRobotsTxt';
 
 let continueScraping = true;
 let urls: string[] = [];
@@ -47,10 +49,14 @@ const crawlAndScrap = async (): Promise<void> => {
     }
 };
 
-const scrapBatch = async (urls: string[]): Promise<void[]> => {
+const scrapBatch = async (urls: string[]): Promise<void> => {
     let newUrls: Set<URL> = new Set();
     const promises = urls.map(async (url) => {
         try {
+            if (!(await verifyUrlCanBeCrawled(url))) {
+                throw new Error('Crawling is blocked by robots.txt');
+            }
+
             newUrls = await getLinksOnPage(url);
             await updateSiteAsVisited(url, [...newUrls]);
         } catch (err: any) {
@@ -60,11 +66,14 @@ const scrapBatch = async (urls: string[]): Promise<void[]> => {
                     : err.message;
 
             await updateSiteAsFailed(url, errorMessage);
-            parentPort?.postMessage(`Error while crawling ${url}: ${errorMessage}`);
+
+            if (process.env.VERBOSE === 'true') {
+                parentPort?.postMessage(`Error while crawling ${url}: ${errorMessage}`);
+            }
         }
     });
 
-    return Promise.all(promises);
+    await Promise.all(promises);
 };
 
 const getLinksOnPage = async (pageUrl: URL | string): Promise<Set<URL>> => {
