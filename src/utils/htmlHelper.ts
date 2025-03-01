@@ -11,7 +11,9 @@ const extractLinks = (node: any, baseUrl: URL, links: Set<URL>): void => {
     if (!node || typeof node !== 'object') return;
 
     if (node.nodeName === 'a' && node.attrs) {
-        const hrefAttr = node.attrs.find((attr: any) => attr.name === 'href')?.value.trim() as string;
+        const hrefAttr = node.attrs
+            .find((attr: any) => attr.name === 'href')
+            ?.value.trim() as string;
         try {
             if (
                 !hrefAttr ||
@@ -19,15 +21,21 @@ const extractLinks = (node: any, baseUrl: URL, links: Set<URL>): void => {
                 hrefAttr.startsWith('mailto:') ||
                 hrefAttr.startsWith('tel:') ||
                 hrefAttr.startsWith('javascript:') ||
-                hrefAttr.startsWith('data:')
-            )
+                hrefAttr.startsWith('data:') ||
+                hrefAttr.startsWith('http://')
+            ) {
                 return;
+            }
+
             let url = new URL(hrefAttr, baseUrl);
 
-            if (url.href === baseUrl.href) return;
+            if (url.href === baseUrl.href) {
+                return;
+            }
+
             links.add(url);
         } catch (err) {
-            console.error(`Invalid URL: ${err}`);
+            console.error(`Invalid URL ${hrefAttr}`);
         }
     }
 

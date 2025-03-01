@@ -12,6 +12,7 @@ try {
     sequelize = new Sequelize(process.env.CONNECTION_STRING, {
         dialect: 'postgres',
         logging: false,
+        logQueryParameters: false,
         database: databaseName
     });
 

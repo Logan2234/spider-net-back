@@ -1,6 +1,6 @@
 import sequelize from '@/configs/db.config';
 import { SiteState } from '@/enums/siteState';
-import Domain from '@/models/domain.model';
+import { QueueBelongsToDomain } from '@/models/domain.model';
 import { Op, Sequelize } from 'sequelize';
 import { URL } from 'url';
 import Queue from '../models/queue.model';
@@ -84,9 +84,8 @@ const getSiteFromQueueParallel = async (n: number = 50): Promise<string[]> => {
     await sequelize.transaction(async (t) => {
         const sites = await Queue.findAll({
             include: {
+                association: QueueBelongsToDomain,
                 required: true,
-                model: Domain,
-                as: 'Domain',
                 where: {
                     [Op.or]: [
                         {
@@ -107,8 +106,13 @@ const getSiteFromQueueParallel = async (n: number = 50): Promise<string[]> => {
             limit: n,
             lock: true,
             skipLocked: true,
-            transaction: t
+            transaction: t,
+            attributes: ['url']
         });
+
+        if (sites.length === 0) {
+            return [];
+        }
 
         urls = sites.map((site) => site.url);
 

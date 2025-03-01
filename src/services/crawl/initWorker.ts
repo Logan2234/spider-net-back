@@ -5,7 +5,7 @@ let workers: Worker[] = [];
 
 const initWorkers = async (): Promise<boolean> => {
     try {
-        const nbCpus = os.cpus().length;
+        const nbCpus = os.cpus().length / 2;
         console.log(`Initializing ${nbCpus} workers...`);
 
         for (let i = 0; i < nbCpus; i++) {
@@ -62,7 +62,7 @@ const initWorker = (): Worker => {
     });
 
     worker.on('exit', (code: number) => {
-        if (code !== 0) {
+        if (code !== 0 || process.env.VERBOSE) {
             console.log(`Worker stopped with exit code ${code}`);
         }
     });
