@@ -9,6 +9,7 @@ const PORT = process.env.PORT || 3000;
 
 import './configs/db.config';
 import sequelize from './configs/db.config';
+import { initiateWebSocketServer } from './configs/websocket.config';
 
 sequelize.sync();
 
@@ -17,6 +18,8 @@ const options = {
     cert: fs.readFileSync('certs/server.cert')
 };
 
-https.createServer(options, app).listen(PORT, () => {
+const server = https.createServer(options, app).listen(PORT, () => {
     console.log(`🚀 Server running on https://localhost:${PORT}`);
 });
+
+initiateWebSocketServer(server);
