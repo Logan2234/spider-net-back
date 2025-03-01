@@ -1,5 +1,7 @@
 import sequelize from '@/configs/db.config';
 import { SiteState } from '@/enums/siteState';
+import Domain from '@/models/domain.model';
+import { Op, Sequelize } from 'sequelize';
 import { URL } from 'url';
 import Queue from '../models/queue.model';
 import { addDomains } from './domain.service';
@@ -78,33 +80,40 @@ const updatePendingSitesAsUnprocessed = async (urls: string[]): Promise<void> =>
  * array is returned.
  */
 const getSiteFromQueueParallel = async (n: number = 50): Promise<string[]> => {
-    const sites: Queue[] = await sequelize.query(
-        `
-        SELECT *
-        FROM queue
-            INNER JOIN domains ON queue.domain = domains.name
-        WHERE
-            state = 'UNPROCESSED'
-            AND (
-                domains."lastVisited" < now() - INTERVAL '1 minute'
-                OR domains."lastVisited" IS NULL
-            )
-        ORDER BY "priority" DESC, "depth" ASC, queue."createdAt" ASC
-        LIMIT 50
-        FOR UPDATE SKIP LOCKED
-        `,
-        {
-            replacements: { state: SiteState.UNPROCESSED, limit: n },
-            model: Queue,
-            mapToModel: true
-        }
-    );
+    let urls: string[] = [];
+    await sequelize.transaction(async (t) => {
+        const sites = await Queue.findAll({
+            include: {
+                required: true,
+                model: Domain,
+                as: 'Domain',
+                where: {
+                    [Op.or]: [
+                        {
+                            lastVisited: {
+                                [Op.lt]: Sequelize.literal("NOW() - INTERVAL '1 minute'")
+                            }
+                        },
+                        { lastVisited: null }
+                    ]
+                }
+            },
+            where: { state: SiteState.UNPROCESSED },
+            order: [
+                ['priority', 'DESC'],
+                ['depth', 'ASC'],
+                ['createdAt', 'ASC']
+            ],
+            limit: n,
+            lock: true,
+            skipLocked: true,
+            transaction: t
+        });
 
-    if (sites.length === 0) return [];
+        urls = sites.map((site) => site.url);
 
-    const urls = sites.map((site) => site.url);
-
-    await Queue.update({ state: SiteState.CRAWLING }, { where: { url: urls } });
+        await Queue.update({ state: SiteState.CRAWLING }, { where: { url: urls }, transaction: t });
+    });
 
     return urls;
 };

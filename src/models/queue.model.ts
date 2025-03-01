@@ -1,6 +1,7 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../configs/db.config';
 import { SiteState } from '../enums/siteState';
+import Domain from './domain.model';
 
 /**
  * Define attributes for the Queue model.
@@ -19,7 +20,8 @@ interface QueueAttributes {
 /**
  * Define the optional fields for new entries.
  */
-interface QueueCreationAttributes extends Optional<QueueAttributes, 'errorMessage' | 'createdAt' | 'updatedAt'> {}
+interface QueueCreationAttributes
+    extends Optional<QueueAttributes, 'errorMessage' | 'createdAt' | 'updatedAt'> {}
 
 /**
  * Define the Queue model.
@@ -33,6 +35,8 @@ class Queue extends Model<QueueAttributes, QueueCreationAttributes> implements Q
     public errorMessage?: string;
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
+
+    public readonly Domain?: Domain;
 }
 
 /**
@@ -75,10 +79,6 @@ Queue.init(
             }
         },
         domain: {
-            references: {
-                model: 'domains',
-                key: 'name'
-            },
             type: DataTypes.TEXT,
             allowNull: false
         },

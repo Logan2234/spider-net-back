@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../configs/db.config';
+import Domain from './domain.model';
 
 /**
  * Define attributes for the VisitedSite model.
@@ -14,16 +15,22 @@ interface VisitedSiteAttributes {
 /**
  * Define the optional fields for new entries.
  */
-interface VisitedSiteCreationAttributes extends Optional<VisitedSiteAttributes, 'createdAt' | 'updatedAt'> {}
+interface VisitedSiteCreationAttributes
+    extends Optional<VisitedSiteAttributes, 'createdAt' | 'updatedAt'> {}
 
 /**
  * Define the VisitedSite model.
  */
-class VisitedSite extends Model<VisitedSiteAttributes, VisitedSiteCreationAttributes> implements VisitedSiteAttributes {
+class VisitedSite
+    extends Model<VisitedSiteAttributes, VisitedSiteCreationAttributes>
+    implements VisitedSiteAttributes
+{
     public url!: string;
     public domain!: string;
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
+
+    public readonly Domain?: Domain;
 }
 
 /**
@@ -42,11 +49,7 @@ VisitedSite.init(
         },
         domain: {
             type: DataTypes.TEXT,
-            allowNull: false,
-            references: {
-                model: 'domains',
-                key: 'name'
-            }
+            allowNull: false
         },
         createdAt: {
             type: DataTypes.DATE,

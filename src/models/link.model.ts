@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../configs/db.config';
+import Domain from './domain.model';
 
 /**
  * Define attributes for the Link model.
@@ -24,6 +25,9 @@ class Link extends Model<LinkAttributes, LinkCreationAttributes> implements Link
     public to!: string;
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
+
+    public readonly FromDomain?: Domain;
+    public readonly ToDomain?: Domain;
 }
 
 /**
@@ -34,20 +38,12 @@ Link.init(
         from: {
             type: DataTypes.TEXT,
             allowNull: false,
-            primaryKey: true,
-            references: {
-                model: 'domains',
-                key: 'name'
-            }
+            primaryKey: true
         },
         to: {
             type: DataTypes.TEXT,
             allowNull: false,
-            primaryKey: true,
-            references: {
-                model: 'domains',
-                key: 'name'
-            }
+            primaryKey: true
         },
         createdAt: {
             type: DataTypes.DATE,

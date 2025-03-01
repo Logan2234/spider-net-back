@@ -1,6 +1,6 @@
 import { getLinksFromHtml2 } from '@/utils/htmlHelper';
+import verifyUrlCanBeCrawled from '@/utils/verifyRobotsTxt';
 import process from 'process';
-import robotsParser from 'robots-parser';
 import { ValidationError } from 'sequelize';
 import { URL } from 'url';
 import { parentPort } from 'worker_threads';
@@ -10,7 +10,6 @@ import {
     updateSiteAsFailed,
     updateSiteAsVisited
 } from '../queue.service';
-import verifyUrlCanBeCrawled from '@/utils/verifyRobotsTxt';
 
 let continueScraping = true;
 let urls: string[] = [];
@@ -27,7 +26,7 @@ const crawlAndScrap = async (): Promise<void> => {
     try {
         let numberOfRetries = 0;
         while (continueScraping) {
-            urls = await getSiteFromQueueParallel(20);
+            urls = await getSiteFromQueueParallel(50);
 
             if (urls.length === 0) {
                 numberOfRetries++;

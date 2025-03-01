@@ -22,8 +22,8 @@ const sendStatsOverview = async (ws: WebSocket): Promise<void> => {
     const data = new StatsOverview(
         numberOfDomains,
         numberInQueue,
-        numberOfVisitedSites,
-        numberOfLinks
+        numberOfLinks,
+        numberOfVisitedSites
     );
 
     if (ws.readyState === WebSocket.OPEN) {

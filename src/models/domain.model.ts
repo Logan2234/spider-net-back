@@ -1,5 +1,8 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../configs/db.config';
+import Link from './link.model';
+import Queue from './queue.model';
+import VisitedSite from './visitedSite.model';
 
 /**
  * Define attributes for the Site model.
@@ -60,5 +63,14 @@ Domain.init(
         timestamps: true
     }
 );
+
+Domain.hasMany(Queue, { foreignKey: 'domain' });
+Domain.hasMany(VisitedSite, { foreignKey: 'domain' });
+Domain.hasMany(Link, { foreignKey: 'from' });
+Domain.hasMany(Link, { foreignKey: 'to' });
+Queue.belongsTo(Domain, { foreignKey: 'domain', targetKey: 'name', as: 'Domain' });
+VisitedSite.belongsTo(Domain, { foreignKey: 'domain', targetKey: 'name', as: 'Domain' });
+Link.belongsTo(Domain, { foreignKey: 'from', targetKey: 'name', as: 'FromDomain' });
+Link.belongsTo(Domain, { foreignKey: 'to', targetKey: 'name', as: 'ToDomain' });
 
 export default Domain;
