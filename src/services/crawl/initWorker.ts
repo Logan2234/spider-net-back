@@ -48,7 +48,11 @@ const stopWorkers = async (): Promise<void> => {
 };
 
 const initWorker = (): Worker => {
-    const worker = new Worker(__dirname + '/crawl.js', { stderr: HIDE_STDS, stdin: HIDE_STDS, stdout: HIDE_STDS });
+    const worker = new Worker(__dirname + '/crawl.js', {
+        stderr: HIDE_STDS,
+        stdin: HIDE_STDS,
+        stdout: HIDE_STDS
+    });
 
     worker.on('error', (err: any) => {
         console.error(err);

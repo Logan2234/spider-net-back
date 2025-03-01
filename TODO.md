@@ -12,3 +12,4 @@
 - [ ] Consider robots.txt
 - [x] Start / Stop crawling instead of launch
 - [ ] Add better logging
+- [ ] Do something with the lastVisited input

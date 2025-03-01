@@ -1,61 +1,70 @@
 import sequelize from '@/configs/db.config';
 import { SiteState } from '@/enums/siteState';
-import { getDomain, trimUrl } from '@/utils/linkHelper';
-import { Transaction } from 'sequelize';
 import { URL } from 'url';
 import Queue from '../models/queue.model';
-import { addDomain } from './domain.service';
-import { addLink } from './link.service';
-import { isSiteVisited } from './visitedSite.service';
+import { addDomains } from './domain.service';
+import { addLinks } from './link.service';
+import { addToVisitedSites, isSiteVisited } from './visitedSite.service';
+
+const updateSiteAsVisited = async (originUrl: string, newUrls: URL[]): Promise<void> => {
+    const site = await getSiteInQueueByUrl(originUrl);
+
+    if (!site) {
+        return;
+    }
+
+    await addInQueue(newUrls, 0, site.depth + 1, site.url);
+    await addToVisitedSites(originUrl);
+    await site.destroy();
+};
 
 const addInQueue = async (
-    url: URL,
+    urls: URL[],
     priority: number = 0,
     depth: number = 0,
-    from: URL | string | null = null,
-    transaction: Transaction | null = null
+    from: URL | string | null = null
 ): Promise<void> => {
-    const domain = getDomain(url);
+    await addDomains(urls);
+    await addLinks(from, urls);
 
-    if (!domain) {
-        return;
-    }
+    for (const { href, hostname } of urls) {
+        const siteAlreadyVisited = await isSiteVisited(href);
 
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-        return;
-    }
+        if (siteAlreadyVisited) {
+            return;
+        }
 
-    const urlString = trimUrl(url);
-    await addDomain(url, transaction);
+        const [site, created] = await Queue.findOrCreate({
+            where: { url: href },
+            defaults: {
+                url: href,
+                domain: hostname,
+                priority,
+                depth,
+                state: SiteState.UNPROCESSED
+            }
+        });
 
-    if (from) {
-        await addLink(from, url, transaction);
-    }
-
-    const siteAlreadyVisited = await isSiteVisited(urlString, transaction);
-
-    if (siteAlreadyVisited) {
-        return;
-    }
-
-    const [site, created] = await Queue.findOrCreate({
-        where: { url: urlString },
-        defaults: {
-            url: urlString,
-            domain,
-            priority,
-            depth,
-            state: SiteState.UNPROCESSED
-        },
-        transaction
-    });
-
-    if (!created) {
-        await site.update({ priority: site.priority + 1 }, { transaction });
+        if (!created) {
+            await site.update({ priority: site.priority + 1 });
+        }
     }
 };
 
 const countSitesInQueue = async (): Promise<number> => Queue.count();
+
+const getSiteInQueueByUrl = async (url: string): Promise<Queue | null> =>
+    Queue.findOne({ where: { url } });
+
+const updateSiteAsFailed = async (url: string, errorMessage: string): Promise<void> => {
+    await Queue.update({ state: SiteState.ERROR, errorMessage }, { where: { url } });
+};
+const updatePendingSitesAsUnprocessed = async (urls: string[]): Promise<void> => {
+    await Queue.update(
+        { state: SiteState.UNPROCESSED },
+        { where: { url: urls, state: SiteState.CRAWLING } }
+    );
+};
 
 /**
  * Retrieve a batch of sites from the queue to be crawled in parallel.
@@ -68,7 +77,7 @@ const countSitesInQueue = async (): Promise<number> => Queue.count();
  * time, and are limited to the specified number. If no sites are available, an empty
  * array is returned.
  */
-const getSiteFromQueueParallel = async (n: number = 50): Promise<Queue[]> => {
+const getSiteFromQueueParallel = async (n: number = 50): Promise<string[]> => {
     const sites: Queue[] = await sequelize.query(
         `
         SELECT * FROM queue
@@ -86,9 +95,19 @@ const getSiteFromQueueParallel = async (n: number = 50): Promise<Queue[]> => {
 
     if (sites.length === 0) return [];
 
-    await Queue.update({ state: SiteState.CRAWLING }, { where: { url: sites.map((site) => site.url) } });
+    const urls = sites.map((site) => site.url);
 
-    return sites;
+    await Queue.update({ state: SiteState.CRAWLING }, { where: { url: urls } });
+
+    return urls;
 };
 
-export { addInQueue, countSitesInQueue, getSiteFromQueueParallel };
+export {
+    addInQueue,
+    countSitesInQueue,
+    getSiteFromQueueParallel,
+    getSiteInQueueByUrl,
+    updatePendingSitesAsUnprocessed,
+    updateSiteAsFailed,
+    updateSiteAsVisited
+};

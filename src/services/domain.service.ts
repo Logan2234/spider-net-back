@@ -1,8 +1,7 @@
 import Domain from '@/models/domain.model';
 import { getDomain } from '@/utils/linkHelper';
-import { Transaction } from 'sequelize';
 
-const addDomain = async (link: URL | null, transaction: Transaction | null = null): Promise<void> => {
+const addDomain = async (link: URL | null): Promise<void> => {
     const linkStr = getDomain(link);
 
     if (!linkStr) {
@@ -11,11 +10,22 @@ const addDomain = async (link: URL | null, transaction: Transaction | null = nul
 
     await Domain.findOrCreate({
         where: { name: linkStr },
-        defaults: { name: linkStr, lastVisited: new Date() },
-        transaction
+        defaults: { name: linkStr, lastVisited: null }
     });
+};
+
+const addDomains = async (links: URL[]): Promise<void> => {
+    const domains = [...new Set<string>(links.map((link) => link.hostname))];
+
+    await Domain.bulkCreate(
+        domains.map((domain) => ({
+            name: domain,
+            lastVisited: null
+        })),
+        { ignoreDuplicates: true }
+    );
 };
 
 const countDomains = async (): Promise<number> => Domain.count();
 
-export { addDomain, countDomains };
+export { addDomain, addDomains, countDomains };

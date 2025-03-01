@@ -1,29 +1,22 @@
-import { SiteState } from '@/enums/siteState';
-import Queue from '@/models/queue.model';
-import { getLinksFromHtml } from '@/utils/htmlHelper';
+import { getLinksFromHtml2 } from '@/utils/htmlHelper';
+import process from 'process';
 import { ValidationError } from 'sequelize';
 import { URL } from 'url';
 import { parentPort } from 'worker_threads';
-import { addInQueue, getSiteFromQueueParallel } from '../queue.service';
-import { addToVisitedSites } from '../visitedSite.service';
+import {
+    getSiteFromQueueParallel,
+    updatePendingSitesAsUnprocessed,
+    updateSiteAsFailed,
+    updateSiteAsVisited
+} from '../queue.service';
 
 let continueScraping = true;
-let sites: Queue[] = [];
+let urls: string[] = [];
 
 parentPort?.on('message', async (message) => {
     if (message.action === 'stop') {
         continueScraping = false;
-        for (const site of sites) {
-            try {
-                if (site.state === SiteState.ERROR) {
-                    continue;
-                }
-                await site.update({ state: SiteState.UNPROCESSED });
-            } catch (err: any) {
-                parentPort?.postMessage(err);
-            }
-        }
-
+        await updatePendingSitesAsUnprocessed(urls);
         process.exit(0);
     }
 });
@@ -32,10 +25,9 @@ const crawlAndScrap = async (): Promise<void> => {
     try {
         let numberOfRetries = 0;
         while (continueScraping) {
-            sites = await getSiteFromQueueParallel(20);
-            parentPort?.postMessage(sites.map((site) => site.url + '\n'));
+            urls = await getSiteFromQueueParallel(20);
 
-            if (sites.length === 0) {
+            if (urls.length === 0) {
                 numberOfRetries++;
 
                 if (numberOfRetries === 3) {
@@ -46,54 +38,44 @@ const crawlAndScrap = async (): Promise<void> => {
                 continue;
             }
 
-            await scrapBatch(sites);
+            await scrapBatch(urls);
         }
+
+        process.exit(0);
     } catch (err: any) {
         parentPort?.postMessage('Error while crawling: ' + err);
     }
 };
 
-const scrapBatch = async (sites: Queue[]): Promise<void[]> => {
-    return Promise.all(
-        sites.map(async (site) => {
-            try {
-                const newUrls = await getLinksOnPage(site.url);
+const scrapBatch = async (urls: string[]): Promise<void[]> => {
+    let newUrls: Set<URL> = new Set();
+    const promises = urls.map(async (url) => {
+        try {
+            newUrls = await getLinksOnPage(url);
+            await updateSiteAsVisited(url, [...newUrls]);
+        } catch (err: any) {
+            const errorMessage =
+                err instanceof ValidationError
+                    ? err.errors.map((error) => error.message).join(', ')
+                    : err.message;
 
-                for (let url of newUrls) {
-                    // TODO Batch add
-                    // TODO ne pas ajouter si c'est la même url
-                    if (url.href === site.url) {
-                        continue;
-                    }
+            await updateSiteAsFailed(url, errorMessage);
+            parentPort?.postMessage(`Error while crawling ${url}: ${errorMessage}`);
+        }
+    });
 
-                    await addInQueue(url, 0, site.depth + 1, site.url, null);
-                }
-
-                await addToVisitedSites(site.url, null);
-                await site.destroy();
-            } catch (err: any) {
-                const errorMessage =
-                    err instanceof ValidationError ? err.errors.map((error) => error.message).join(', ') : err.message;
-                await site.update({ state: SiteState.ERROR, errorMessage });
-                parentPort?.postMessage(`Error while crawling ${site.url}: ${errorMessage}`);
-            }
-        })
-    );
+    return Promise.all(promises);
 };
 
 const getLinksOnPage = async (pageUrl: URL | string): Promise<Set<URL>> => {
-    if (typeof pageUrl === 'string') {
-        pageUrl = new URL(pageUrl);
-    }
-
     const response = await fetch(pageUrl, { method: 'GET' });
 
     if (!response.ok) {
-        return new Set<URL>();
+        throw new Error(`Error while fetching: ${response.statusText}`);
     }
 
     const html = await response.text();
-    return getLinksFromHtml(html, pageUrl);
+    return getLinksFromHtml2(html, new URL(pageUrl));
 };
 
 export default crawlAndScrap;

@@ -1,26 +1,21 @@
 import VisitedSite from '@/models/visitedSite.model';
-import { getDomain, trimUrl } from '@/utils/linkHelper';
-import { Transaction } from 'sequelize';
-import { URL } from 'url';
+import { getDomain } from '@/utils/linkHelper';
 
-const isSiteVisited = async (site: string, transaction: Transaction | null = null): Promise<boolean> =>
-    (await VisitedSite.findOne({ where: { url: site }, transaction })) !== null;
+const isSiteVisited = async (site: URL | string): Promise<boolean> =>
+    (await VisitedSite.findOne({ where: { url: site.toString() } })) !== null;
 
 const countVisitedSites = async (): Promise<number> => VisitedSite.count();
 
-const addToVisitedSites = async (url: URL | string, transaction: Transaction | null = null): Promise<void> => {
+const addToVisitedSites = async (url: string): Promise<void> => {
     const domain = getDomain(url);
 
     if (!domain) {
         return;
     }
 
-    url = trimUrl(url);
-
     await VisitedSite.findOrCreate({
         where: { url },
-        defaults: { url, domain },
-        transaction
+        defaults: { url, domain }
     });
 };
 

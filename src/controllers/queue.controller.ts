@@ -27,7 +27,7 @@ const postAddSiteInQueue = async (req: Request, res: Response, next: NextFunctio
                 throw new ApiError('Invalid URL, must start with http:// or https://', 400);
             }
 
-            await addInQueue(url, priority);
+            await addInQueue([url], priority);
         } catch (err) {
             if (err instanceof TypeError) {
                 throw new ApiError('Invalid URL', 400);
