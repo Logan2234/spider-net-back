@@ -1,5 +1,6 @@
 import VisitedSite from '@/models/visitedSite.model';
 import { getDomain } from '@/utils/linkHelper';
+import { updateDomainVisitDate } from './domain.service';
 
 const isSiteVisited = async (site: URL | string): Promise<boolean> =>
     (await VisitedSite.findOne({ where: { url: site.toString() } })) !== null;
@@ -13,10 +14,10 @@ const addToVisitedSites = async (url: string): Promise<void> => {
         return;
     }
 
-    await VisitedSite.findOrCreate({
-        where: { url },
-        defaults: { url, domain }
-    });
+    await Promise.all([
+        VisitedSite.findOrCreate({ where: { url }, defaults: { url, domain } }),
+        updateDomainVisitDate(domain)
+    ]);
 };
 
 export { addToVisitedSites, countVisitedSites, isSiteVisited };

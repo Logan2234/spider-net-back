@@ -26,6 +26,10 @@ const addDomains = async (links: URL[]): Promise<void> => {
     );
 };
 
+const updateDomainVisitDate = async (domain: string): Promise<void> => {
+    await Domain.update({ lastVisited: new Date() }, { where: { name: domain } });
+};
+
 const countDomains = async (): Promise<number> => Domain.count();
 
-export { addDomain, addDomains, countDomains };
+export { addDomain, addDomains, countDomains, updateDomainVisitDate };

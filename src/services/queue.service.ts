@@ -80,10 +80,17 @@ const updatePendingSitesAsUnprocessed = async (urls: string[]): Promise<void> =>
 const getSiteFromQueueParallel = async (n: number = 50): Promise<string[]> => {
     const sites: Queue[] = await sequelize.query(
         `
-        SELECT * FROM queue
-        WHERE state = :state
-        ORDER BY "priority" DESC, "depth" ASC, "createdAt" ASC
-        LIMIT :limit
+        SELECT *
+        FROM queue
+            INNER JOIN domains ON queue.domain = domains.name
+        WHERE
+            state = 'UNPROCESSED'
+            AND (
+                domains."lastVisited" < now() - INTERVAL '1 minute'
+                OR domains."lastVisited" IS NULL
+            )
+        ORDER BY "priority" DESC, "depth" ASC, queue."createdAt" ASC
+        LIMIT 50
         FOR UPDATE SKIP LOCKED
         `,
         {
