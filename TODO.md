@@ -9,7 +9,7 @@
 - [ ] Improve fetch
 - [ ] Improve error management
 - [x] Use parallelization for crawler
-- [ ] Consider robots.txt
+- [x] Consider robots.txt
 - [x] Start / Stop crawling instead of launch
 - [ ] Add better logging
 - [x] Do something with the lastVisited input

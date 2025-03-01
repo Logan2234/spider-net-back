@@ -1,0 +1,18 @@
+{
+    "verbose": true,
+    "roots": ["<rootDir>/tests"],
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "moduleFileExtensions": ["ts", "js", "json", "node"],
+    "moduleDirectories": ["node_modules"],
+    "moduleNameMapper": {
+        "^@/(.*)$": "<rootDir>/src/$1"
+    },
+    "testMatch": ["**/?(*.)+(spec|test).(ts|js)"],
+    "coverageDirectory": "<rootDir>/coverage",
+    "testTimeout": 30000,
+    "globalSetup": "<rootDir>/tests/setup/globalSetup.ts",
+    "globalTeardown": "<rootDir>/tests/setup/globalTeardown.ts",
+    "setupFiles": ["<rootDir>/tests/setup/env.ts"],
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup/setup.ts"]
+}
