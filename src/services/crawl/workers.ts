@@ -41,7 +41,7 @@ const stopWorkers = async (): Promise<void> => {
         })
     );
 
-    console.log(`${workers.length} workers stopped.`);
+    console.log('All workers stopped.');
     workers = [];
 };
 
@@ -62,6 +62,7 @@ const initWorker = (): Worker => {
     });
 
     worker.on('exit', (code: number) => {
+        workers = workers.filter((w) => w.threadId !== worker.threadId);
         if (code !== 0 || process.env.VERBOSE) {
             console.log(`Worker stopped with exit code ${code}`);
         }
@@ -74,4 +75,8 @@ const initWorker = (): Worker => {
     return worker;
 };
 
-export { initWorkers, stopWorkers };
+const hasWorkers = (): number => {
+    return workers.length;
+};
+
+export { hasWorkers, initWorkers, stopWorkers };

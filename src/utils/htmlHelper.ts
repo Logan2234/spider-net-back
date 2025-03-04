@@ -1,49 +1,37 @@
 import { parse } from 'parse5';
 import { URL } from 'url';
 
-/**
- * Recursively extracts all valid page links from HTML.
- * @param node - The current HTML node being processed.
- * @param baseUrl - The base URL for resolving relative links.
- * @param links - A Set to store unique extracted links.
- */
-const extractLinks = (node: any, baseUrl: URL, links: Set<URL>): void => {
-    if (!node || typeof node !== 'object') return;
+const extractLinks = (rootNode: any, baseUrl: URL): Set<URL> => {
+    const links = new Set<URL>();
+    const stack = [rootNode];
 
-    if (node.nodeName === 'a' && node.attrs) {
-        const hrefAttr = node.attrs
-            .find((attr: any) => attr.name === 'href')
-            ?.value.trim() as string;
-        try {
-            if (
-                !hrefAttr ||
-                hrefAttr.startsWith('#') ||
-                hrefAttr.startsWith('mailto:') ||
-                hrefAttr.startsWith('tel:') ||
-                hrefAttr.startsWith('javascript:') ||
-                hrefAttr.startsWith('data:') ||
-                hrefAttr.startsWith('http://')
-            ) {
-                return;
+    while (stack.length > 0) {
+        const node = stack.pop();
+
+        if (!node || typeof node !== 'object') {
+            continue;
+        }
+
+        if (node.nodeName === 'a' && node.attrs) {
+            const hrefAttr = node.attrs.find((attr: any) => attr.name === 'href')?.value.trim();
+            if (hrefAttr && !hrefAttr.startsWith('#') && !hrefAttr.startsWith('mailto:')) {
+                try {
+                    let url = new URL(hrefAttr, baseUrl);
+                    if (url.href !== baseUrl.href) {
+                        links.add(url);
+                    }
+                } catch (err) {
+                    console.error(`Invalid URL ${hrefAttr}`);
+                }
             }
+        }
 
-            let url = new URL(hrefAttr, baseUrl);
-
-            if (url.href === baseUrl.href) {
-                return;
-            }
-
-            links.add(url);
-        } catch (err) {
-            console.error(`Invalid URL ${hrefAttr}`);
+        if (node.childNodes) {
+            stack.push(...node.childNodes);
         }
     }
 
-    if (node.childNodes) {
-        for (const child of node.childNodes) {
-            extractLinks(child, baseUrl, links);
-        }
-    }
+    return links;
 };
 
 /**
@@ -53,10 +41,8 @@ const extractLinks = (node: any, baseUrl: URL, links: Set<URL>): void => {
  * @returns Set of extracted links.
  */
 const getLinksFromHtml2 = (html: string, baseUrl: URL): Set<URL> => {
-    const document = parse(html);
-    const links = new Set<URL>();
-    extractLinks(document, baseUrl, links);
-    return links;
+    let document = parse(html);
+    return extractLinks(document, baseUrl);
 };
 
 // const getLinksFromHtml = (htmlCode: string, currentUrl: URL) => {

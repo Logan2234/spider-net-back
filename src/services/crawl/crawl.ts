@@ -26,7 +26,7 @@ const crawlAndScrap = async (): Promise<void> => {
     try {
         let numberOfRetries = 0;
         while (continueScraping) {
-            urls = await getSiteFromQueueParallel(50);
+            urls = await getSiteFromQueueParallel(10);
 
             if (urls.length === 0) {
                 numberOfRetries++;
@@ -40,6 +40,7 @@ const crawlAndScrap = async (): Promise<void> => {
             }
 
             await scrapBatch(urls);
+            global.gc?.();
         }
 
         process.exit(0);

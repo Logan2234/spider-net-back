@@ -10,7 +10,7 @@ const launchContinuousDataLoop = async (ws: WebSocket) => {
 
     setInterval(async () => {
         await sendStatsOverview(ws);
-    }, 5000);
+    }, 2000);
 };
 
 const sendStatsOverview = async (ws: WebSocket): Promise<void> => {
@@ -27,7 +27,7 @@ const sendStatsOverview = async (ws: WebSocket): Promise<void> => {
     );
 
     if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(data));
+        ws.send(JSON.stringify({ ...data, memoryUsage: process.memoryUsage() }));
     }
 };
 
