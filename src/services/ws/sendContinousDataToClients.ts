@@ -14,10 +14,12 @@ const launchContinuousDataLoop = async (ws: WebSocket) => {
 };
 
 const sendStatsOverview = async (ws: WebSocket): Promise<void> => {
-    const numberOfDomains = await countDomains();
-    const numberOfVisitedSites = await countVisitedSites();
-    const numberInQueue = await countSitesInQueue();
-    const numberOfLinks = await countLinks();
+    const [numberOfDomains, numberOfVisitedSites, numberInQueue, numberOfLinks] = await Promise.all([
+        countDomains(),
+        countVisitedSites(),
+        countSitesInQueue(),
+        countLinks(),
+    ]);
 
     const data = new StatsOverview(
         numberOfDomains,

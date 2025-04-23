@@ -1,20 +1,20 @@
-import { countDomains } from '@/services/domain.service';
-import { countLinks } from '@/services/link.service';
-import { countSitesInQueue } from '@/services/queue.service';
-import { countVisitedSites } from '@/services/visitedSite.service';
+import retrieveDomainStats from '@/services/retrieveDomainStats';
 import { NextFunction, Request, Response } from 'express';
 
-const getStats = async (_req: Request, res: Response, next: NextFunction) => {
+const getStats = async ({ query }: Request, res: Response, next: NextFunction) => {
     try {
-        const numberOfDomains = await countDomains();
-        const numberOfVisitedSites = await countVisitedSites();
-        const numberInQueue = await countSitesInQueue();
-        const numberOfLinks = await countLinks();
+        const domainName = query.domain;
 
-        res.json({ numberInQueue, numberOfDomains, numberOfLinks, numberOfVisitedSites });
+        if (!domainName) {
+            throw new Error('Domain is required');
+        }
+
+        const domainStats = await retrieveDomainStats(domainName);
+
+        return res.json(domainStats);
     } catch (err) {
         next(err);
     }
 };
 
-export { getStats };
+export default getStats;

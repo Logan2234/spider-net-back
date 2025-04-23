@@ -65,7 +65,10 @@ Domain.init(
 );
 
 Domain.hasMany(Queue, { foreignKey: 'domain' });
-Domain.hasMany(VisitedSite, { foreignKey: 'domain' });
+const VisitedSiteBelongsToDomain = Domain.hasMany(VisitedSite, {
+    foreignKey: 'domain',
+    as: 'visitedSites'
+});
 Domain.hasMany(Link, { foreignKey: 'from' });
 Domain.hasMany(Link, { foreignKey: 'to' });
 const QueueBelongsToDomain = Queue.belongsTo(Domain, {
@@ -78,4 +81,4 @@ Link.belongsTo(Domain, { foreignKey: 'from', targetKey: 'name', as: 'FromDomain'
 Link.belongsTo(Domain, { foreignKey: 'to', targetKey: 'name', as: 'ToDomain' });
 
 export default Domain;
-export { QueueBelongsToDomain };
+export { QueueBelongsToDomain, VisitedSiteBelongsToDomain };
