@@ -53,7 +53,11 @@ const addInQueue = async (
     }
 };
 
-const countSitesInQueue = async (): Promise<number> => Queue.count();
+const countPendingSites = async (): Promise<number> =>
+    Queue.count({ where: { state: [SiteState.UNPROCESSED, SiteState.CRAWLING] } });
+
+const countErroredSites = async (): Promise<number> =>
+    Queue.count({ where: { state: SiteState.ERROR } });
 
 const getSiteInQueueByUrl = async (url: string): Promise<Queue | null> =>
     Queue.findOne({ where: { url } });
@@ -124,7 +128,8 @@ const getSiteFromQueueParallel = async (n: number = 50): Promise<string[]> => {
 
 export {
     addInQueue,
-    countSitesInQueue,
+    countErroredSites,
+    countPendingSites,
     getSiteFromQueueParallel,
     getSiteInQueueByUrl,
     updatePendingSitesAsUnprocessed,

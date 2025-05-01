@@ -1,4 +1,4 @@
-import launchContinuousDataLoop from '@/services/ws/sendContinousDataToClients';
+import launchContinuousDataLoop from '@/services/ws/wsDashboardData';
 import { Server } from 'https';
 import { WebSocketServer } from 'ws';
 

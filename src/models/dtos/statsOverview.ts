@@ -3,16 +3,13 @@ export class StatsOverview {
         totalDomains: number,
         totalInQueue: number,
         totalLinks: number,
-        totalVisited: number
+        totalVisited: number,
+        totalErrors: number
     ) {
         this.totalDomains = totalDomains;
         this.totalInQueue = totalInQueue;
         this.totalLinks = totalLinks;
         this.totalVisited = totalVisited;
+        this.totalErrors = totalErrors;
     }
-
-    public totalDomains: number;
-    public totalInQueue: number;
-    public totalLinks: number;
-    public totalVisited: number;
 }
