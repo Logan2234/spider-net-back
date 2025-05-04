@@ -11,7 +11,7 @@ const wsDashboardData = async (ws: WebSocket) => {
 
   setInterval(async () => {
     await sendStatsOverview(ws);
-  }, 2000);
+  }, 1000);
 };
 
 const sendStatsOverview = async (ws: WebSocket): Promise<void> => {
@@ -37,7 +37,7 @@ const sendStatsOverview = async (ws: WebSocket): Promise<void> => {
       JSON.stringify({
         ...data,
         memoryUsage: process.memoryUsage(),
-        crawlingOngoing: numberOfActiveWorkers() > 0
+        nbWorkers: numberOfActiveWorkers()
       })
     );
   }
