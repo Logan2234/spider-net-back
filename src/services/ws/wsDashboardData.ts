@@ -1,6 +1,6 @@
 import { StatsOverview } from '@/models/dtos/statsOverview';
 import WebSocket from 'ws';
-import { numberOfActiveWorkers } from '../crawl/workers';
+import { crawlQueue } from '../crawl/crawlQueue';
 import { countDomains } from '../domain.service';
 import { countLinks } from '../link.service';
 import { countErroredSites, countPendingSites } from '../queue.service';
@@ -15,14 +15,19 @@ const wsDashboardData = async (ws: WebSocket) => {
 };
 
 const sendStatsOverview = async (ws: WebSocket): Promise<void> => {
-  const [numberOfDomains, numberOfVisitedSites, numberInQueue, numberOfLinks, numberErrorsInQueue] =
-    await Promise.all([
-      countDomains(),
-      countVisitedSites(),
-      countPendingSites(),
-      countLinks(),
-      countErroredSites()
-    ]);
+  const [
+    numberOfDomains,
+    numberOfVisitedSites,
+    numberInQueue,
+    numberOfLinks,
+    numberErrorsInQueue
+  ] = await Promise.all([
+    countDomains(),
+    countVisitedSites(),
+    countPendingSites(),
+    countLinks(),
+    countErroredSites()
+  ]);
 
   const data = new StatsOverview(
     numberOfDomains,
@@ -37,7 +42,9 @@ const sendStatsOverview = async (ws: WebSocket): Promise<void> => {
       JSON.stringify({
         ...data,
         memoryUsage: process.memoryUsage(),
-        nbWorkers: numberOfActiveWorkers()
+        nbWorkers: (await crawlQueue.isPaused())
+          ? 0
+          : await crawlQueue.getWorkersCount()
       })
     );
   }

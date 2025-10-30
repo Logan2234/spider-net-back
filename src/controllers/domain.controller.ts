@@ -1,13 +1,32 @@
-import { countDomains } from '@/services/domain.service';
+import { countDomains, listDomains } from '@/services/domain.service';
 import { NextFunction, Request, Response } from 'express';
 
-const getCountDomains = async (_req: Request, res: Response, next: NextFunction) => {
-    try {
-        const numberOfKnownDomains = await countDomains();
-        res.json(numberOfKnownDomains);
-    } catch (err) {
-        next(err);
-    }
+const getCountDomains = async (
+  _req: Request,
+  res: Response,
+  _: NextFunction
+) => {
+  const numberOfKnownDomains = await countDomains();
+  res.json(numberOfKnownDomains);
 };
 
-export { getCountDomains };
+const getListDomains = async (
+  { query }: Request,
+  res: Response,
+  _: NextFunction
+) => {
+  const domains = await listDomains({
+    page: query.page ? parseInt(query.page.toString()) : 1,
+    pageSize: query.pageSize ? parseInt(query.pageSize.toString()) : 15,
+    sort: query.sort
+      ? JSON.parse(decodeURIComponent(query.sort.toString()))
+      : undefined,
+    search: query.search?.toString()
+  });
+
+  const count = await countDomains();
+
+  res.json({ results: domains, count });
+};
+
+export { getCountDomains, getListDomains };

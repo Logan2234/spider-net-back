@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
-import sequelize from '../configs/db.config';
+import Sequelize from '../configs/db';
 import { SiteState } from '../enums/siteState';
 import Domain from './domain.model';
 
@@ -20,13 +20,18 @@ interface QueueAttributes {
 /**
  * Define the optional fields for new entries.
  */
-interface QueueCreationAttributes
-  extends Optional<QueueAttributes, 'errorMessage' | 'createdAt' | 'updatedAt'> {}
+type QueueCreationAttributes = Optional<
+  QueueAttributes,
+  'errorMessage' | 'createdAt' | 'updatedAt'
+>;
 
 /**
  * Define the Queue model.
  */
-class Queue extends Model<QueueAttributes, QueueCreationAttributes> implements QueueAttributes {
+class Queue
+  extends Model<QueueAttributes, QueueCreationAttributes>
+  implements QueueAttributes
+{
   public url!: string;
   public domain!: string;
   public priority!: number;
@@ -80,7 +85,11 @@ Queue.init(
     },
     domain: {
       type: DataTypes.TEXT,
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notEmpty: true,
+        isLowercase: true
+      }
     },
     errorMessage: {
       type: DataTypes.TEXT,
@@ -96,7 +105,7 @@ Queue.init(
     }
   },
   {
-    sequelize,
+    sequelize: Sequelize,
     tableName: 'queue',
     timestamps: true
   }

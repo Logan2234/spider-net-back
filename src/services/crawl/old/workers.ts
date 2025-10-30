@@ -17,7 +17,7 @@ const initWorkers = async (): Promise<void> => {
     }
 
     console.log(`${workers.length} workers initialized.`);
-  } catch (err: any) {
+  } catch (err) {
     console.error('Error initializing workers:', err);
   }
 };
@@ -52,11 +52,11 @@ const initWorker = (): Worker => {
     stdout: HIDE_STDS
   });
 
-  worker.on('error', (err: any) => {
+  worker.on('error', (err) => {
     console.error(err);
   });
 
-  worker.on('messageerror', (err: any) => {
+  worker.on('messageerror', (err) => {
     console.error(err);
   });
 
@@ -67,7 +67,7 @@ const initWorker = (): Worker => {
     }
   });
 
-  worker.on('message', (message: any) => {
+  worker.on('message', (message) => {
     console.log('[Worker n°' + worker.threadId + '] ' + message);
   });
 
@@ -76,4 +76,4 @@ const initWorker = (): Worker => {
 
 const numberOfActiveWorkers = (): number => workers.length;
 
-export { numberOfActiveWorkers, initWorkers, stopWorkers };
+export { initWorkers, numberOfActiveWorkers, stopWorkers };

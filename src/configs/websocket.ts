@@ -8,8 +8,6 @@ const initiateWebSocketServer = (server: Server): WebSocketServer => {
   wss = new WebSocketServer({ server });
 
   wss.on('connection', (ws) => {
-    console.log('Client connected');
-
     ws.on('message', async (message) => {
       const msg = message.toString();
 
@@ -22,7 +20,7 @@ const initiateWebSocketServer = (server: Server): WebSocketServer => {
       }
     });
 
-    ws.on('close', () => console.log('Client disconnected'));
+    ws.on('close', () => {});
   });
 
   wss.on('error', (error: any) => {
@@ -34,14 +32,14 @@ const initiateWebSocketServer = (server: Server): WebSocketServer => {
   });
 
   wss.on('listening', () => {
-    console.log('📡 WebSocket server started');
+    console.info('📡 WebSocket server started');
   });
 
   wss.on('close', () => {
-    console.log('WebSocket server closed');
+    console.info('WebSocket server closed');
   });
 
-  wss.on('headers', (_headers) => {
+  wss.on('headers', () => {
     // console.log('WebSocket server headers:', headers);
   });
 

@@ -1,14 +1,15 @@
-import sequelize from '@/configs/db.config';
+import Sequelize from '@/configs/db';
 import { SiteState } from '@/enums/siteState';
-import { QueueBelongsToDomain } from '@/models/domain.model';
-import { Op, Sequelize } from 'sequelize';
-import { URL } from 'url';
+import { QueryTypes } from 'sequelize';
 import Queue from '../models/queue.model';
 import { addDomains } from './domain.service';
 import { addLinks } from './link.service';
 import { addToVisitedSites, isSiteVisited } from './visitedSite.service';
 
-const updateSiteAsVisited = async (originUrl: string, newUrls: URL[]): Promise<void> => {
+const updateSiteAsVisited = async (
+  originUrl: string,
+  newUrls: string[]
+): Promise<void> => {
   const site = await getSiteInQueueByUrl(originUrl);
 
   if (!site) {
@@ -21,26 +22,26 @@ const updateSiteAsVisited = async (originUrl: string, newUrls: URL[]): Promise<v
 };
 
 const addInQueue = async (
-  urls: URL[],
+  urls: string[],
   priority: number = 0,
   depth: number = 0,
-  from: URL | string | null = null
+  from: string | null = null
 ): Promise<void> => {
   await addDomains(urls);
   await addLinks(from, urls);
 
-  for (const { href, hostname } of urls) {
-    const siteAlreadyVisited = await isSiteVisited(href);
+  for (const url of urls) {
+    const siteAlreadyVisited = await isSiteVisited(url);
 
     if (siteAlreadyVisited) {
       return;
     }
 
     const [site, created] = await Queue.findOrCreate({
-      where: { url: href },
+      where: { url },
       defaults: {
-        url: href,
-        domain: hostname,
+        url,
+        domain: new URL(url).hostname,
         priority,
         depth,
         state: SiteState.UNPROCESSED
@@ -54,7 +55,9 @@ const addInQueue = async (
 };
 
 const countPendingSites = async (): Promise<number> =>
-  Queue.count({ where: { state: [SiteState.UNPROCESSED, SiteState.CRAWLING] } });
+  Queue.count({
+    where: { state: [SiteState.UNPROCESSED, SiteState.CRAWLING] }
+  });
 
 const countErroredSites = async (): Promise<number> =>
   Queue.count({ where: { state: SiteState.ERROR } });
@@ -62,14 +65,27 @@ const countErroredSites = async (): Promise<number> =>
 const getSiteInQueueByUrl = async (url: string): Promise<Queue | null> =>
   Queue.findOne({ where: { url } });
 
-const updateSiteAsFailed = async (url: string, errorMessage: string): Promise<void> => {
-  await Queue.update({ state: SiteState.ERROR, errorMessage }, { where: { url } });
+const updateSiteAsFailed = async (
+  url: string,
+  errorMessage: string
+): Promise<void> => {
+  await Queue.update(
+    { state: SiteState.ERROR, errorMessage },
+    { where: { url } }
+  );
 };
-const updatePendingSitesAsUnprocessed = async (urls: string[]): Promise<void> => {
+
+const updatePendingSitesAsUnprocessed = async (
+  urls?: string[]
+): Promise<void> => {
   await Queue.update(
     { state: SiteState.UNPROCESSED },
-    { where: { url: urls, state: SiteState.CRAWLING } }
+    { where: { state: SiteState.CRAWLING, ...(urls ? { url: urls } : {}) } }
   );
+};
+
+const removeUrlFromQueue = async (url: string): Promise<void> => {
+  await Queue.destroy({ where: { url } });
 };
 
 /**
@@ -85,34 +101,23 @@ const updatePendingSitesAsUnprocessed = async (urls: string[]): Promise<void> =>
  */
 const getSiteFromQueueParallel = async (n: number = 50): Promise<string[]> => {
   let urls: string[] = [];
-  await sequelize.transaction(async (t) => {
-    const sites = await Queue.findAll({
-      include: {
-        association: QueueBelongsToDomain,
-        required: true,
-        where: {
-          [Op.or]: [
-            {
-              lastVisited: {
-                [Op.lt]: Sequelize.literal("NOW() - INTERVAL '1 minute'")
-              }
-            },
-            { lastVisited: null }
-          ]
-        }
-      },
-      where: { state: SiteState.UNPROCESSED },
-      order: [
-        ['priority', 'DESC'],
-        ['depth', 'ASC'],
-        ['createdAt', 'ASC']
-      ],
-      limit: n,
-      lock: true,
-      skipLocked: true,
-      transaction: t,
-      attributes: ['url']
-    });
+  await Sequelize.transaction(async (t) => {
+    const sites = await Sequelize.query<Queue>(
+      `
+        SELECT q.url
+        FROM queue q
+        JOIN domains d ON q.domain = d.name
+        WHERE q.state = '${SiteState.UNPROCESSED}'
+          AND (d."lastVisited" IS NULL OR d."lastVisited" < NOW() - INTERVAL '1 minute')
+        ORDER BY q.priority DESC, q.depth ASC, q."createdAt" ASC
+        LIMIT ${n}
+        FOR UPDATE SKIP LOCKED
+      `,
+      {
+        type: QueryTypes.SELECT,
+        transaction: t
+      }
+    );
 
     if (sites.length === 0) {
       return [];
@@ -120,7 +125,10 @@ const getSiteFromQueueParallel = async (n: number = 50): Promise<string[]> => {
 
     urls = sites.map((site) => site.url);
 
-    await Queue.update({ state: SiteState.CRAWLING }, { where: { url: urls }, transaction: t });
+    await Queue.update(
+      { state: SiteState.CRAWLING },
+      { where: { url: urls }, transaction: t }
+    );
   });
 
   return urls;
@@ -132,6 +140,7 @@ export {
   countPendingSites,
   getSiteFromQueueParallel,
   getSiteInQueueByUrl,
+  removeUrlFromQueue,
   updatePendingSitesAsUnprocessed,
   updateSiteAsFailed,
   updateSiteAsVisited
